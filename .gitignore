@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Environment / secrets
+.env
+
+# Whisper model cache (re-downloaded automatically on first run)
+.cache/

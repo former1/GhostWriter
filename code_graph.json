@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {
+      "id": "calculate_total",
+      "type": "function"
+    },
+    {
+      "id": "apply_discount",
+      "type": "function"
+    },
+    {
+      "id": "add_tax",
+      "type": "function"
+    },
+    {
+      "id": "create_receipt",
+      "type": "function"
+    }
+  ],
+  "edges": [
+    {
+      "source": "calculate_total",
+      "target": "create_receipt",
+      "type": "data_flow",
+      "label": "total"
+    },
+    {
+      "source": "apply_discount",
+      "target": "create_receipt",
+      "type": "data_flow",
+      "label": "discounted_total"
+    },
+    {
+      "source": "add_tax",
+      "target": "create_receipt",
+      "type": "data_flow",
+      "label": "final_price"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Web server (server.py)
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# Anthropic API calls (code_analyzer.py, state_tracker.py, live_annotator.py, comment_generator.py)
+anthropic
+
+# HTTP calls from the transcription/annotation loop to the local server
+requests
+
+# Audio capture + processing (live_transcribe.py, text_to_speech.py)
+numpy
+sounddevice
+openai-whisper
+
+# Note: Whisper also requires the ffmpeg system binary to decode audio
+# files (used by text_to_speech.py). Not a pip package — install with:
+#   macOS:  brew install ffmpeg
+#   Linux:  sudo apt install ffmpeg

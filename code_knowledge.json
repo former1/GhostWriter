@@ -1,0 +1,101 @@
+[
+  {
+    "name": "calculate_total",
+    "type": "function",
+    "line_start": 1,
+    "line_end": 3,
+    "code": "def calculate_total(price, quantity):\n    total = price * quantity\n    return total",
+    "purpose": "Multiplies a price by a quantity to compute a total cost and returns the result.",
+    "key_concepts": [
+      "calculate_total",
+      "price",
+      "quantity",
+      "total",
+      "return",
+      "multiplication",
+      "function parameters"
+    ],
+    "likely_phrases": [
+      "multiply price by quantity",
+      "return the total",
+      "takes two parameters",
+      "calculate the total cost",
+      "simple function"
+    ]
+  },
+  {
+    "name": "apply_discount",
+    "type": "function",
+    "line_start": 6,
+    "line_end": 9,
+    "code": "def apply_discount(total, discount_percent):\n    discount = total * discount_percent / 100\n    discounted_total = total - discount\n    return discounted_total",
+    "purpose": "Calculates and returns a reduced total price after applying a percentage-based discount.",
+    "key_concepts": [
+      "apply_discount",
+      "total",
+      "discount_percent",
+      "discount",
+      "discounted_total",
+      "percentage calculation",
+      "return value"
+    ],
+    "likely_phrases": [
+      "calculate the discount",
+      "subtract from the total",
+      "divide by one hundred",
+      "return the discounted total",
+      "pass in the percentage"
+    ]
+  },
+  {
+    "name": "add_tax",
+    "type": "function",
+    "line_start": 12,
+    "line_end": 15,
+    "code": "def add_tax(discounted_total, tax_percent):\n    tax = discounted_total * tax_percent / 100\n    final_price = discounted_total + tax\n    return final_price",
+    "purpose": "Calculates and adds a percentage-based tax to a discounted price, returning the final total price.",
+    "key_concepts": [
+      "add_tax",
+      "discounted_total",
+      "tax_percent",
+      "tax",
+      "final_price",
+      "percentage calculation",
+      "return value"
+    ],
+    "likely_phrases": [
+      "calculate the tax",
+      "add the tax on top",
+      "divide by one hundred",
+      "return the final price",
+      "tax percentage"
+    ]
+  },
+  {
+    "name": "create_receipt",
+    "type": "function",
+    "line_start": 18,
+    "line_end": 23,
+    "code": "def create_receipt(price, quantity, discount_percent, tax_percent):\n    total = calculate_total(price, quantity)\n    discounted_total = apply_discount(total, discount_percent)\n    final_price = add_tax(discounted_total, tax_percent)\n\n    return final_price",
+    "purpose": "Calculates a final receipt price by applying a discount and tax to a base total derived from price and quantity.",
+    "key_concepts": [
+      "create_receipt",
+      "calculate_total",
+      "apply_discount",
+      "add_tax",
+      "discounted_total",
+      "final_price",
+      "price",
+      "quantity",
+      "discount_percent",
+      "tax_percent"
+    ],
+    "likely_phrases": [
+      "calculate the total",
+      "apply the discount",
+      "add the tax",
+      "return the final price",
+      "chain these calculations together"
+    ]
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": 3.03,
+    "transcript": "to look at a Python program that tries to find the final",
+    "location": "create_receipt",
+    "confidence": "medium",
+    "reasoning": "The phrase 'find the final' suggests an overview of the overall pipeline that computes a final price, which aligns most closely with create_receipt as the top-level function.",
+    "code": "def create_receipt(price, quantity, discount_percent, tax_percent):\n    total = calculate_total(price, quantity)\n    discounted_total = apply_discount(total, discount_percent)\n    final_price = add_tax(discounted_total, tax_percent)\n\n    return final_price",
+    "purpose": "Calculates a final price by applying a discount and tax to a quantity of items, then returns the result as a receipt total."
+  },
+  {
+    "timestamp": 7.22,
+    "transcript": "price of some products.",
+    "location": "create_receipt",
+    "confidence": "high",
+    "reasoning": "The phrase 'final price of some products' aligns with create_receipt's purpose of computing a final price, and this is a continuation of the previous context.",
+    "code": "def create_receipt(price, quantity, discount_percent, tax_percent):\n    total = calculate_total(price, quantity)\n    discounted_total = apply_discount(total, discount_percent)\n    final_price = add_tax(discounted_total, tax_percent)\n\n    return final_price",
+    "purpose": "Calculates a final price by applying a discount and tax to a quantity of items, then returns the result as a receipt total."
+  },
+  {
+    "timestamp": 11.11,
+    "transcript": "For example, the CaliClay Total makes something...",
+    "location": "calculate_total",
+    "confidence": "low",
+    "reasoning": "The phrase 'calculate total makes something' loosely references the calculate_total function, suggesting a possible transition, though the audio quality seems poor and the match is uncertain.",
+    "code": "def calculate_total(price, quantity):\n    total = price * quantity\n    return total",
+    "purpose": "Multiplies a price by a quantity to compute a total cost and returns the result."
+  }
+]

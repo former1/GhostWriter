@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GhostWriter</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1e1e1e;
+      --panel: #252526;
+      --panel-alt: #1b1b1b;
+      --border: #3c3c3c;
+      --text: #d4d4d4;
+      --muted: #858585;
+      --blue: #569cd6;
+      --green: #6a9955;
+      --yellow: #dcdcaa;
+      --red: #f48771;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+    header {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      height: 52px;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+    h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; margin: 0; }
+    .status { align-items: center; color: var(--muted); display: flex; gap: 8px; }
+    .status-dot { background: var(--green); border-radius: 50%; height: 8px; width: 8px; }
+    .status-dot.offline { background: var(--red); }
+    main { display: grid; grid-template-columns: minmax(280px, 35%) 1fr; height: calc(100vh - 52px); }
+    .panel { min-width: 0; overflow: hidden; }
+    .transcript-panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .code-panel { background: var(--panel-alt); display: flex; flex-direction: column; }
+    .panel-title {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      color: #cccccc;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      padding: 9px 16px;
+      text-transform: uppercase;
+    }
+    #transcript { flex: 1; overflow-y: auto; padding: 12px 14px 28px; }
+    .transcript-line {
+      animation: slide-in .28s ease-out both;
+      border-bottom: 1px solid #303030;
+      padding: 10px 2px;
+    }
+    .transcript-meta { align-items: center; color: var(--muted); display: flex; font-size: 11px; gap: 8px; margin-bottom: 3px; }
+    .transcript-text { white-space: pre-wrap; word-break: break-word; }
+    .location-badge {
+      border-radius: 3px;
+      display: inline-block;
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+      padding: 1px 5px;
+    }
+    .confidence-high { background: #234d2b; color: #b5e7bd; }
+    .confidence-medium { background: #554b20; color: #f2df8a; }
+    .confidence-low, .confidence-none { background: #3a3a3a; color: #a7a7a7; }
+    #code { flex: 1; overflow: auto; padding: 14px 0 32px; }
+    .code-row {
+      display: grid;
+      grid-template-columns: 52px minmax(max-content, 1fr);
+      min-height: 21px;
+      transition: background .35s ease, box-shadow .35s ease;
+    }
+    .code-row.current { background: rgba(38, 79, 120, .34); box-shadow: inset 3px 0 var(--blue); }
+    .line-number { color: #5a5a5a; padding-right: 14px; text-align: right; user-select: none; }
+    .code-content { font: 13px/21px Consolas, "Cascadia Code", monospace; padding-right: 20px; white-space: pre; }
+    .comment-row .code-content { color: var(--green); }
+    .comment-row .line-number { color: #4e7042; }
+    .comment-row { animation: comment-in .24s ease-out both; }
+    .comment-cursor::after { animation: blink .8s steps(1) infinite; color: var(--green); content: "▌"; }
+    .empty { color: var(--muted); padding: 24px 4px; text-align: center; }
+    @keyframes slide-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+    @keyframes comment-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* --- code map / graph panel --- */
+    #graph-toggle {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--panel); border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      letter-spacing: .05em; padding: 8px 20px; text-transform: uppercase;
+      cursor: pointer; z-index: 10; text-align: center;
+    }
+    #graph-panel {
+      position: fixed; bottom: 34px; left: 0; right: 0; height: 0;
+      background: var(--panel-alt); border-top: 1px solid var(--border);
+      overflow: hidden; transition: height .3s ease; z-index: 9;
+    }
+    #graph-panel.open { height: 45vh; }
+    #graph { width: 100%; height: 100%; }
+    .node circle { stroke: #569cd6; stroke-width: 2px; fill: #252526; opacity: 0; transition: opacity .5s ease; }
+    .node.visible circle { opacity: 1; }
+    .node text { fill: #d4d4d4; font: 12px monospace; opacity: 0; transition: opacity .5s ease; }
+    .node.visible text { opacity: 1; }
+    .node.active circle { stroke: var(--blue); stroke-width: 3px; filter: drop-shadow(0 0 6px var(--blue)); }
+    .edge-label { fill: #f2df8a; font: 11px monospace; opacity: 0; transition: opacity .5s ease; }
+    .edge-label.visible { opacity: 1; }
+    .link { stroke: #6a9955; stroke-width: 1.5px; opacity: 0; transition: opacity .5s ease; }
+    .link.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Live Programming Lecture</h1>
+    <div class="status">
+      <input type="file" id="fileInput" accept=".py" style="display:none">
+      <button id="uploadBtn" style="background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 10px;font:12px inherit;cursor:pointer;">Upload code</button>
+      <span id="uploadStatus"></span>
+      <button id="transcribeBtn" disabled style="background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 10px;font:12px inherit;cursor:pointer;">Start transcription</button>
+      <button id="downloadBtn" disabled style="background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 10px;font:12px inherit;cursor:pointer;">Download commented file</button>
+      <span id="status-dot" class="status-dot offline"></span><span id="status-text">Connecting…</span>
+    </div>
+  </header>
+  <main>
+    <section class="panel transcript-panel">
+      <div class="panel-title">Transcript</div>
+      <div id="transcript"><div class="empty">Waiting for transcript…</div></div>
+    </section>
+    <section class="panel code-panel">
+      <div class="panel-title">No file loaded</div>
+      <div id="code"><div class="empty">Upload a Python file to get started.</div></div>
+    </section>
+  </main>
+
+  <div id="graph-toggle">▲ Code Map</div>
+  <div id="graph-panel">
+    <svg id="graph"></svg>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script>
+    (() => {
+      const API = "http://localhost:8000";
+      const transcriptEl = document.getElementById("transcript");
+      const codeEl = document.getElementById("code");
+      const statusDot = document.getElementById("status-dot");
+      const statusText = document.getElementById("status-text");
+      const state = {
+        source: "", sourceLines: [], functions: {},
+        currentLocation: null, currentConfidence: "none",
+        events: [], nextEvent: 0, comments: [], queue: [], typing: false
+      };
+
+      // --- code map / graph state ---
+      const graphState = { nodes: [], edges: [], discovered: new Set(), svgSel: null };
+      let graphInitialized = false;
+
+      document.getElementById("graph-toggle").addEventListener("click", () => {
+        const panel = document.getElementById("graph-panel");
+        const opening = !panel.classList.contains("open");
+        panel.classList.toggle("open");
+        if (opening && !graphInitialized) {
+          panel.addEventListener("transitionend", () => initGraph(), { once: true });
+        }
+      });
+
+      async function initGraph() {
+        graphInitialized = true;
+        try {
+          const res = await fetch(`${API}/graph`);
+          if (!res.ok) { graphInitialized = false; return; }
+          const data = await res.json();
+          graphState.nodes = data.nodes;
+          graphState.edges = data.edges;
+          renderGraph();
+          state.events.forEach(e => { if (e.type === "location") revealNode(e.location); });
+        } catch (_) {
+          graphInitialized = false;
+        }
+      }
+
+      function revealNode(id) {
+        if (!id || id === "none") return;
+        if (!graphState.discovered.has(id)) {
+          graphState.discovered.add(id);
+          updateGraphVisibility();
+        }
+        setActiveNode(id);
+      }
+
+      function setActiveNode(id) {
+        if (!graphState.svgSel) return;
+        graphState.svgSel.selectAll(".node").classed("active", d => d.id === id);
+      }
+
+      function updateGraphVisibility() {
+        if (!graphState.svgSel) return;
+        graphState.svgSel.selectAll(".node").classed("visible", d => graphState.discovered.has(d.id));
+        graphState.svgSel.selectAll(".link")
+          .classed("visible", d => graphState.discovered.has(d.source.id || d.source) && graphState.discovered.has(d.target.id || d.target));
+        graphState.svgSel.selectAll(".edge-label")
+          .classed("visible", d => graphState.discovered.has(d.source.id || d.source) && graphState.discovered.has(d.target.id || d.target));
+      }
+
+      function renderGraph() {
+        const svg = d3.select("#graph");
+        graphState.svgSel = svg;
+        const width = document.getElementById("graph-panel").clientWidth;
+        const height = document.getElementById("graph-panel").clientHeight;
+        svg.attr("viewBox", [0, 0, width, height]);
+
+        svg.append("defs").append("marker")
+          .attr("id", "arrow").attr("viewBox", "0 -5 10 10")
+          .attr("refX", 28).attr("refY", 0).attr("markerWidth", 6).attr("markerHeight", 6)
+          .attr("orient", "auto").append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "#6a9955");
+
+        const simulation = d3.forceSimulation(graphState.nodes)
+          .force("link", d3.forceLink(graphState.edges).id(d => d.id).distance(140))
+          .force("charge", d3.forceManyBody().strength(-400))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        const link = svg.append("g").selectAll("line")
+          .data(graphState.edges).join("line")
+          .attr("class", d => `link ${d.type}`).attr("marker-end", "url(#arrow)");
+
+        const edgeLabel = svg.append("g").selectAll("text")
+          .data(graphState.edges.filter(e => e.label)).join("text")
+          .attr("class", "edge-label").text(d => d.label);
+
+        const node = svg.append("g").selectAll("g")
+          .data(graphState.nodes).join("g")
+          .attr("class", d => `node ${d.type}`)
+          .call(d3.drag()
+            .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+            .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+        node.append("circle").attr("r", 22);
+        node.append("text").attr("text-anchor", "middle").attr("dy", 4).text(d => d.id.split(".").pop());
+
+        simulation.on("tick", () => {
+          link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+              .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+          edgeLabel.attr("x", d => (d.source.x + d.target.x) / 2).attr("y", d => (d.source.y + d.target.y) / 2 - 6);
+          node.attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+        updateGraphVisibility();
+      }
+
+      // --- existing transcript / code panel logic ---
+
+      function setConnection(online, message) {
+        statusDot.classList.toggle("offline", !online);
+        statusText.textContent = message;
+      }
+      function esc(value) {
+        return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+      }
+      function timeLabel(value) {
+        if (value == null) return "";
+        return `${value}s`;
+      }
+      function confidenceClass(value) {
+        return value === "high" ? "confidence-high" : value === "medium" ? "confidence-medium" : value === "low" ? "confidence-low" : "confidence-none";
+      }
+      function addTranscript(item, location, confidence) {
+        const empty = transcriptEl.querySelector(".empty");
+        if (empty) empty.remove();
+        const row = document.createElement("article");
+        row.className = "transcript-line";
+        const badge = location && location !== "none"
+          ? `<span class="location-badge ${confidenceClass(confidence)}">→ ${esc(location)}${confidence ? ` · ${esc(confidence)}` : ""}</span>`
+          : `<span class="location-badge confidence-none">→ no location</span>`;
+        row.innerHTML = `<div class="transcript-meta"><time>${esc(timeLabel(item.time))}</time>${badge}</div><div class="transcript-text">${esc(item.text || "")}</div>`;
+        transcriptEl.appendChild(row);
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      }
+      function normalizeKnowledge(data) {
+        state.source = data.source || "";
+        state.sourceLines = state.source.split("\n");
+        state.functions = data.functions || {};
+        if (data.name) document.querySelector(".code-panel .panel-title").textContent = data.name;
+      }
+      function functionStart(location) {
+        if (location == null) return null;
+        if (state.functions[location] != null) return Number(state.functions[location]);
+        const match = state.sourceLines.findIndex(line => new RegExp("^\\s*(async\\s+)?def\\s+" + location.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\(").test(line));
+        return match < 0 ? null : match;
+      }
+      function renderCode() {
+        if (!state.source) { codeEl.innerHTML = '<div class="empty">Source unavailable from /knowledge</div>'; return; }
+        const rows = [];
+        state.sourceLines.forEach((line, index) => {
+          state.comments.filter(c => c.anchor === index && c.line == null).forEach(c => rows.push({ comment: c }));
+          rows.push({ index, text: line });
+          state.comments.filter(c => c.anchor === index && c.line != null).forEach(c => rows.push({ comment: c }));
+        });
+        codeEl.innerHTML = rows.map(row => {
+          if (row.comment) return `<div class="code-row comment-row" data-comment="${row.comment.id}"><span class="line-number">·</span><code class="code-content">${esc(row.comment.text)}</code></div>`;
+          const active = state.currentLocation && row.text.includes(`def ${state.currentLocation}(`);
+          const highlighted = window.hljs ? hljs.highlight(row.text, { language: "python" }).value : esc(row.text);
+          return `<div class="code-row${active ? " current" : ""}"><span class="line-number">${row.index + 1}</span><code class="code-content">${highlighted}</code></div>`;
+        }).join("");
+        const active = codeEl.querySelector(".current");
+        if (active) active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+      function insertComment(event) {
+        const start = functionStart(event.location);
+        if (start == null) return;
+        const relative = event.line == null ? null : Number(event.line);
+        const anchor = relative == null ? start : start + relative;
+        const comment = { id: `${Date.now()}-${Math.random()}`, location: event.location, line: relative, anchor, text: "# " };
+        state.comments.push(comment);
+        renderCode();
+        state.queue.push({ event, comment });
+        typeNext();
+      }
+      function typeNext() {
+        if (state.typing || !state.queue.length) return;
+        state.typing = true;
+        const item = state.queue.shift();
+        const target = item.event.comment || "";
+        let pos = 0;
+        const tick = () => {
+          if (pos < target.length) {
+            item.comment.text += target[pos++];
+            const node = codeEl.querySelector(`[data-comment="${item.comment.id}"] .code-content`);
+            if (node) { node.textContent = item.comment.text; node.classList.add("comment-cursor"); }
+            setTimeout(tick, 24);
+          } else {
+            const node = codeEl.querySelector(`[data-comment="${item.comment.id}"] .code-content`);
+            if (node) node.classList.remove("comment-cursor");
+            state.typing = false;
+            typeNext();
+          }
+        };
+        tick();
+      }
+      function processEvent(event) {
+        state.events.push(event);
+        if (event.type === "transcript") {
+          addTranscript(event, state.currentLocation, state.currentConfidence);
+        } else if (event.type === "location") {
+          state.currentLocation = event.location || null;
+          state.currentConfidence = event.confidence || "none";
+          renderCode();
+          if (graphInitialized) revealNode(event.location);
+        } else if (event.type === "comment") {
+          insertComment(event);
+        }
+      }
+      async function load() {
+        try {
+          const [stateResponse, knowledgeResponse] = await Promise.all([fetch(`${API}/state`), fetch(`${API}/knowledge`)]);
+          if (!stateResponse.ok || !knowledgeResponse.ok) throw new Error("Backend request failed");
+          const snapshot = await stateResponse.json();
+          normalizeKnowledge(await knowledgeResponse.json());
+          state.currentLocation = snapshot.current_location || null;
+          (snapshot.events || []).forEach(processEvent);
+          state.nextEvent = (snapshot.events || []).length;
+          renderCode();
+          setConnection(true, "Connected");
+        } catch (error) {
+          setConnection(false, "Backend unavailable");
+          codeEl.innerHTML = '<div class="empty">Could not load the backend or source.</div>';
+        }
+      }
+      async function poll() {
+        try {
+          const response = await fetch(`${API}/events?since=${state.nextEvent}`);
+          if (!response.ok) throw new Error("Event request failed");
+          const payload = await response.json();
+          (payload.events || []).forEach(processEvent);
+          state.nextEvent = payload.total ?? state.nextEvent + (payload.events || []).length;
+          setConnection(true, "Connected");
+        } catch (_) {
+          setConnection(false, "Reconnecting…");
+        }
+      }
+      const fileInput = document.getElementById("fileInput");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const transcribeBtn = document.getElementById("transcribeBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+      let transcribing = false;
+
+      uploadBtn.addEventListener("click", () => fileInput.click());
+
+      async function refreshTranscriptionStatus() {
+        try {
+          const res = await fetch(`${API}/transcription-status`);
+          if (!res.ok) return;
+          const data = await res.json();
+          transcribing = !!data.running;
+          transcribeBtn.textContent = transcribing ? "Stop transcription" : "Start transcription";
+        } catch (_) { /* keep last known state on a dropped poll */ }
+      }
+
+      transcribeBtn.addEventListener("click", async () => {
+        transcribeBtn.disabled = true;
+        const startingUp = !transcribing;
+        try {
+          const endpoint = transcribing ? "stop-transcription" : "start-transcription";
+          const res = await fetch(`${API}/${endpoint}`, { method: "POST" });
+          if (!res.ok) {
+            const problem = await res.json().catch(() => ({}));
+            throw new Error(problem.detail || `Server returned ${res.status}`);
+          }
+          transcribing = startingUp;
+          transcribeBtn.textContent = transcribing ? "Stop transcription" : "Start transcription";
+        } catch (err) {
+          alert(`Could not ${startingUp ? "start" : "stop"} transcription — ${err.message}`);
+        } finally {
+          transcribeBtn.disabled = false;
+        }
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        window.open(`${API}/download-annotated`, "_blank");
+      });
+
+      let pollingStarted = false;
+
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        uploadBtn.disabled = true;
+        uploadStatus.textContent = "Analyzing…";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const res = await fetch(`${API}/upload`, { method: "POST", body: formData });
+          if (!res.ok) {
+            const problem = await res.json().catch(() => ({}));
+            throw new Error(problem.detail || `Server returned ${res.status}`);
+          }
+
+          // reset everything so the new file starts from a clean slate
+          state.comments = [];
+          state.queue = [];
+          state.currentLocation = null;
+          state.events = [];
+          state.nextEvent = 0;
+          transcriptEl.innerHTML = '<div class="empty">Waiting for transcript…</div>';
+
+          graphState.discovered = new Set();
+          graphInitialized = false;
+          document.getElementById("graph-panel").innerHTML = '<svg id="graph"></svg>';
+
+          await load();
+          if (document.getElementById("graph-panel").classList.contains("open")) initGraph();
+          if (!pollingStarted) {
+            pollingStarted = true;
+            setInterval(poll, 1000);
+            setInterval(refreshTranscriptionStatus, 3000);
+          }
+
+          transcribing = false;
+          transcribeBtn.textContent = "Start transcription";
+          transcribeBtn.disabled = false;
+          downloadBtn.disabled = false;
+          refreshTranscriptionStatus();
+
+          uploadStatus.textContent = "Analyzed ✓";
+        } catch (err) {
+          uploadStatus.textContent = `Upload failed — ${err.message}`;
+          console.error(err);
+        } finally {
+          uploadBtn.disabled = false;
+          fileInput.value = "";
+        }
+      });
+
+      // start empty — nothing is loaded until a file is uploaded
+      setConnection(true, "Waiting for upload");
+    })();
+  </script>
+</body>
+</html>
