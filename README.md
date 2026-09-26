@@ -71,7 +71,13 @@ export ANTHROPIC_API_KEY="your-key-here"
 uvicorn server:app --reload --port 8000
 ```
 
-Then open `viewer.html` in a browser.
+Then, in a second terminal, serve `viewer.html` over HTTP instead of opening it directly as a file — some browsers block `fetch()` requests made from a page loaded via `file://`, which can make the page look broken even though the backend is working fine:
+
+```bash
+python3 -m http.server 5500
+```
+
+Open `http://localhost:5500/viewer.html` in your browser.
 
 1. Click **Upload code** and choose a `.py` file — this analyzes it and builds the knowledge base.
 2. Click **Start transcription** and begin talking through the code. Comments will appear inline as you speak, and the code map (bottom bar) fills in as topics come up.
