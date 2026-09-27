@@ -25,7 +25,7 @@ Instead of handing the learner a raw transcript to read alongside the code, Ghos
 4. `server.py` collects all of this as a stream of events; `viewer.html` polls it and types the comments into place next to the code in real time, highlights the current function, and reveals it on the code relationship map.
 
 There's also an offline path (`comment_generator.py`) that, after a full session, groups the whole transcript by function and asks Claude to write one clean, consolidated comment per function — useful for producing a tidier final annotated file than the incremental live version.
-
+![Example Screenshot](https://github.com/former1/GhostWriter/blob/main/PHOTO-2026-09-26-16-34-28.jpg)
 ## Project structure
 
 ```
