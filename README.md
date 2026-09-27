@@ -85,7 +85,14 @@ Open `http://localhost:5500/viewer.html` in your browser.
 4. Click **Download commented file** to save the annotated version of the source file.
 
 The first run of `live_transcribe.py` will download the Whisper "base" model (~140MB); this only happens once.
+## Privacy and Limitations
+1. Audio transcription runs locally through Whisper. However, transcript text and relevant code context are sent to the Anthropic API to identify the code being discussed and generate annotations.
 
+2. Avoid using sensitive conversations or proprietary source code unless sharing that data with the configured API is permitted.
+
+3. Generated comments may be incomplete or inaccurate. They should be treated as learning aids and reviewed before being used as technical documentation.
+
+4. Session state is stored in memory and resets when the server restarts or a new file is uploaded.
 ## Notes
 
 - Microphone permission is required for whichever terminal app or process is capturing audio. On macOS, grant this under **System Settings → Privacy & Security → Microphone**.
